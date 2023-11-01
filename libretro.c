@@ -416,9 +416,11 @@ void retro_run(void)
 
          if (done == 0)
          {
+#if !defined(SF2000)
             log_cb(RETRO_LOG_ERROR,
                   "mad decode (Err:%d) %d (%d, %d) %d\n",
                   retour, mp3Position, read, done, soundEnd);
+#endif
             read++; /* Skip in case of error. */
             error++;
             if (error > 65536)
