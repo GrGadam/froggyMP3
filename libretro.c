@@ -81,10 +81,9 @@ static u16 AlphaBlend(u16 pixel, u16 backpixel, u16 opacity)
          );
 }
 
-static bool retro_load_game_internal(const char *mp3_filename, const char *cdg_filename)
+static bool retro_load_game_internal(const char *mp3_filename)
 {
    FILE *fic = NULL;
-   CDGLoad(cdg_filename);                    //Unnecessary for mp3
    fic = fopen(mp3_filename, "rb");          //open file (for reading in binary mode)
    if (!fic)
       return false;
@@ -169,7 +168,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 void retro_get_system_info(struct retro_system_info *info)  //Core config information
 {
    memset(info, 0, sizeof(*info));
-   info->library_name     = "pocketcdg";
+   info->library_name     = "froggyMP3";
    info->need_fullpath    = false;
    info->valid_extensions = "mp3";
 #ifdef GIT_VERSION
@@ -416,21 +415,11 @@ bool retro_load_game(const struct retro_game_info *info)
       return 0;
    }
 
-   // Load .cdg
-   strcpy(openCDGFilename, info->path);
-   strcpy(openMP3Filename, openCDGFilename);
+   //load .mp3
+   strcpy(openMP3Filename, info->path);
    openMP3Filename_len = strlen(openMP3Filename);
 
-   //load .mp3
-   
-
-   if (openMP3Filename_len > 4)
-   {
-      openMP3Filename[openMP3Filename_len - 3] = 0;
-      strcat(openMP3Filename, "mp3");
-   }
-
-   return retro_load_game_internal(openMP3Filename, openCDGFilename);
+   return retro_load_game_internal(openMP3Filename); //TODO delete CDG
 }
 
 void retro_unload_game(void)
@@ -491,4 +480,3 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
     (void)enabled;
     (void)code;
 }
-
