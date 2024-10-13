@@ -14,8 +14,6 @@
 
 #include "libmad/libmad.h"
 
-#include "font8x16.h"
-
 #ifdef ABGR1555
 #define GP_RGB24(r, g, b) (((((b >> 3)) & 0x1f) << 10) | ((((g >> 3)) & 0x1f) << 5) | (((r >> 3)) & 0x1f))
 #else
@@ -24,19 +22,18 @@
 
 #define FPS 50
 
-static void *mp3Mad     = NULL;
+static void *mp3Mad     = NULL;  //mp3Mad instance
 
-static char *mp3        = NULL;
-static u32 mp3Length    = 0;
-static u32 mp3Position  = 0;
+static char *mp3        = NULL;  //mp3 file data
+static u32 mp3Length    = 0;     //length of mp3 file data
+static u32 mp3Position  = 0;     //current position in reading mp3 file data
 
 static s16 *soundBuffer = NULL;
 static u16 soundEnd     = 0;
 
-static u8 kpause        = 0;
+static u8 kpause        = 0;     //is core paused
 
-u16 pixels[320 * 240 * 2];
-u16 pixels2[320 * 240 * 2];
+u16 pixels[320 * 240];       //framebuffer 1 (main fb for karakoke text)
 
 static void fallback_log(enum retro_log_level level, const char *fmt, ...);
 
@@ -87,24 +84,24 @@ static u16 AlphaBlend(u16 pixel, u16 backpixel, u16 opacity)
 static bool retro_load_game_internal(const char *mp3_filename, const char *cdg_filename)
 {
    FILE *fic = NULL;
-   CDGLoad(cdg_filename);
-   fic = fopen(mp3_filename, "rb");
+   CDGLoad(cdg_filename);                    //Unnecessary for mp3
+   fic = fopen(mp3_filename, "rb");          //open file (for reading in binary mode)
    if (!fic)
       return false;
-   fseek(fic, 0, SEEK_END);
-   mp3Length = ftell(fic);
-   fseek(fic, 0, SEEK_SET);
-   if (!(mp3 = (char *)malloc(mp3Length)))
+   fseek(fic, 0, SEEK_END);                  //get where the file ends
+   mp3Length = ftell(fic);                   //save mp3 file length
+   fseek(fic, 0, SEEK_SET);                  //back to mp3 file beginning
+   if (!(mp3 = (char *)malloc(mp3Length)))   //allocate mp3 file size amount of memory (true if succes, false if not)
       return false;
-   fread(mp3, 1, mp3Length, fic);
-   fclose(fic);
+   fread(mp3, 1, mp3Length, fic);            //read file data into variable
+   fclose(fic);                              //close file
 
    mp3Position = 0;
 
    if (mp3Length > 10) /* Skip ID3 Tag */
    {
       id3Header header;
-      memcpy(&header, mp3, 10);
+   memcpy(&header, mp3, 10);
 
       if ((header.identifier[0] == 0x49) && (header.identifier[1] == 0x44) && (header.identifier[2] == 0x33))
       {
@@ -120,7 +117,7 @@ static bool retro_load_game_internal(const char *mp3_filename, const char *cdg_f
       }
    }
 
-   mp3Mad   = mad_init();
+   mp3Mad   = mad_init();                    //init libmad for mp3 decoding
    soundEnd = 0;
 
    return true;
@@ -144,6 +141,11 @@ void retro_init(void)
 
    width       = 320;
    height      = 240;
+
+   for (int i = 0; i < 320 * 240; i++) {
+      pixels[i] = 0x001F;
+   }
+   video_cb(pixels, width, height, width);
 }
 
 void retro_deinit(void)
@@ -164,12 +166,12 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
     (void)device;
 }
 
-void retro_get_system_info(struct retro_system_info *info)
+void retro_get_system_info(struct retro_system_info *info)  //Core config information
 {
    memset(info, 0, sizeof(*info));
    info->library_name     = "pocketcdg";
    info->need_fullpath    = false;
-   info->valid_extensions = "cdg";
+   info->valid_extensions = "mp3";
 #ifdef GIT_VERSION
    info->library_version  = "git" GIT_VERSION;
 #else
@@ -177,7 +179,7 @@ void retro_get_system_info(struct retro_system_info *info)
 #endif
 }
 
-void retro_get_system_av_info(struct retro_system_av_info *info)
+void retro_get_system_av_info(struct retro_system_av_info *info)  //Video information
 {
     info->timing.fps            = FPS;
     info->timing.sample_rate    = 44100.0;
@@ -187,10 +189,10 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
     info->geometry.max_width    = 320;
     info->geometry.max_height   = 240;
-    info->geometry.aspect_ratio = 1;
+    info->geometry.aspect_ratio = 4/3;
 }
 
-void retro_set_environment(retro_environment_t cb)
+void retro_set_environment(retro_environment_t cb) //Input configs
 {
    struct retro_vfs_interface_info vfs_iface_info;
    struct retro_log_callback logging;
@@ -284,20 +286,18 @@ struct KeyMap
 #define NEEDFRAME (44100 / 50) // 32768 max
 #define NEEDBYTE  (NEEDFRAME * 4) // 32768 max
 
-void retro_run(void)
+void retro_run(void) //Called every frame
 {
    int i;
-   static int framecount      = 0;
    static char keyPressed[24] = {0};
    static bool updated        = false;
 
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE,
-            &updated) && updated)
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE,&updated) && updated) //update variables if needed
       update_variables();
 
-   input_poll_cb();
+   input_poll_cb();                             //take inputs
 
-   for (i = 0; i < 24; i++)
+   for (i = 0; i < 24; i++)                     //Check which inputs were pressed
    {
       if (input_state_cb(keymap[i].port, RETRO_DEVICE_JOYPAD, 0,
                keymap[i].index))
@@ -322,73 +322,15 @@ void retro_run(void)
 
    }
 
-   if (!kpause)
-   {
-      getFrame(pixels, framecount * (1000 / FPS), FPS);
-      framecount++;
-   }
-
-   if (framecount < 150)
-   {
-      int i, j;
-      char str[512];
-      u16 col;
-      size_t str_len;
-#ifdef GIT_VERSION
-      char *version = "git" GIT_VERSION;
-#else
-      char *version = "svn";
-#endif
-
-      memcpy(pixels2, pixels, width * height * 2);
-
-      col = GP_RGB24(100, 50, 200);
-
-      sprintf(str, "Pocket CDG by Kyuran (%s)", version);
-      str_len = strlen(str);
-
-      for (i = 0; i < str_len; i++)
-      {
-
-         for (j = 0; j < 16; j++)
-         {
-            int n;
-            u8 car = (u8)font8x16[str[i] * 16 + j];
-
-            for (n = 0; n < 8; n++)
-            {
-               if ((car & 128) == 128)
-               {
-                  if (framecount > 100)
-                  {
-                     float ratio = ((float)(framecount-100)/50) * 255;
-                     u16 origcol = pixels2[n + i * 8 + (j + height - 16) 
-                        * 320];
-                     u16 destcol = AlphaBlend(origcol, col, (u8)ratio);
-
-                     pixels2[n + i * 8 + (j + height - 16) * 320] = destcol;
-
-                  }
-                  else
-                     pixels2[n + i * 8 + (j + height - 16) * 320] = col;
-               }
-               car = car << 1;
-            }
-         }
-      }
-      video_cb(pixels2, width, height, width * 2);
-
-   }
-   else
-      video_cb(pixels, width, height, width * 2);
+   video_cb(pixels, width, height, width); //draw main framebuffer
 
    // Play mp3 (to clean)
-   if (!kpause)
+   if (!kpause)   //if not paused
    {
 
       int error = 0;
 
-      while (soundEnd <= NEEDBYTE)
+      while (soundEnd <= NEEDBYTE)  //soundEnd <= ((44100 / 50) * 4) we need more sound data
       {
          int length = 2048;
          int read;
@@ -397,10 +339,10 @@ void retro_run(void)
          int resolution = 16;
          int halfsamplerate = 0;
 
-         if (mp3Position + length > mp3Length)
+         if (mp3Position + length > mp3Length)                             //if the currentPosition + next audio segment > mp3 data length
          {
             length = mp3Length - mp3Position;
-            if (length <= 128) // 2048 / 16
+            if (length <= 128) // 2048 / 16        less than 128 chars left from mp3 data -> exit
             {
                log_cb(RETRO_LOG_INFO,"Song ended, exiting libretro\n");
                environ_cb(RETRO_ENVIRONMENT_SHUTDOWN, NULL);
@@ -410,11 +352,11 @@ void retro_run(void)
 
          retour = mad_decode(mp3Mad, mp3 + mp3Position, length,
                (char *)soundBuffer + soundEnd, 10000, &read,
-               &done, resolution, halfsamplerate);
+               &done, resolution, halfsamplerate);                         //decode current audio segment with mp3Mad
 
-         soundEnd += done;
+         soundEnd += done;                                                 //increment already played audio segment
 
-         if (done == 0)
+         if (done == 0)    //error
          {
 #if !defined(SF2000)
             log_cb(RETRO_LOG_ERROR,
@@ -427,7 +369,7 @@ void retro_run(void)
                break;
          }
 
-         mp3Position += read;
+         mp3Position += read;                                              //update mp3 position with read chars(bytes)
       }
 
       if (RETRO_IS_BIG_ENDIAN)
@@ -437,12 +379,12 @@ void retro_run(void)
             soundBuffer[i] = SWAP16(soundBuffer[i]);
       }
 
-      audio_batch_cb(soundBuffer, NEEDFRAME);
+      audio_batch_cb(soundBuffer, NEEDFRAME);                             //play sound callback
 
-      soundEnd -= NEEDBYTE;
+      soundEnd -= NEEDBYTE;                                               //played current audio bytes -> empty soundEnd(which holds the audio bytes size left to be played)?
 
       memcpy( (char *)soundBuffer,
-              (char *)soundBuffer + NEEDBYTE, soundEnd);
+              (char *)soundBuffer + NEEDBYTE, soundEnd);                   //remove played audio segment from soundbuffer?
    }
 }
 
@@ -478,6 +420,9 @@ bool retro_load_game(const struct retro_game_info *info)
    strcpy(openCDGFilename, info->path);
    strcpy(openMP3Filename, openCDGFilename);
    openMP3Filename_len = strlen(openMP3Filename);
+
+   //load .mp3
+   
 
    if (openMP3Filename_len > 4)
    {
