@@ -22,6 +22,6 @@ In the `sf2000_multicore` folder use the following command:
 ``` 
 make CONSOLE=froggymp3 CORE=cores/froggyMP3
 ``` 
-After this, the built core should be under `sf2000_multicore/sdcard/cores/froggyMP3`
-First time, you can move the whole folder on to your sf2000 (which must have multicore installed) in the cores folder (like: /cores/froggymp3)
-After that, you need to copy your `.mp3` files to your sf2000 `CORES/froggymp3/`. (If the folder doesn't exist first, you can just create a new folder and name it froggymp3).
+After this, the built core should be under `sf2000_multicore/sdcard/cores/froggyMP3` <br>
+First time, you can move the whole folder on to your sf2000 (which must have multicore installed) in the cores folder (like: /cores/froggymp3) <br>
+After that, you need to copy your `.mp3` files to your sf2000 `CORES/froggymp3/`. (If the folder doesn't exist first, you can just create a new folder and name it froggymp3). <br>
