@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-#How to build (SF2000)
+# How to build (SF2000)
 
 ## I. Set up your development environment
 ### Follow the guide here: 
