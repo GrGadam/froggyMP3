@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+Based on PocketCGD [Github](https://github.com/libretro/libretro-pocketcdg)
+
 # How to build (SF2000)
 
 ## I. Set up your development environment
