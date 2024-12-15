@@ -2,9 +2,6 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Based on PocketCGD [Github](https://github.com/libretro/libretro-pocketcdg)
-Look for .cdg (& .mp3) file format to use PocketCDG at its best: https://github.com/redbug26/pocketcdg-core/wiki/kcr
-
 #How to build (SF2000)
 
 ## I. Set up your development environment
